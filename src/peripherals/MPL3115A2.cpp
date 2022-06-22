@@ -138,6 +138,19 @@ void MPL3115A2::readSensorData() {
 
 }
 
+/**
+ * Uses a moving average over 1000 iterations to calculate an offset to set the altitude to ground level at start up
+ */
+void MPL3115A2::calibrateMPL3115A2() {
+	for (int i = 0; i < 1000; i++) {
+		altitudePrevAGL = altitudeCurrentAGL;
+		altitudeRawAGL = altitude;
+		altitudeCurrentAGL = altitudeRawAGL + ALPHA * (altitudePrevAGL - altitudeRawAGL);
+	}
+	// Set the offset value for later use in subtraction
+	altitudeAGLOffset = altitudeCurrentAGL;
+}
+
 /*
  * Function for reading the current pressure
  * @return pressure in Pascals

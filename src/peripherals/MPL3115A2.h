@@ -40,6 +40,13 @@ private:
 
     float prevAltitude = 0;
 
+	// AGL
+	float altitudePrevAGL = 0;
+	float altitudeCurrentAGL = 0;
+	float altitudeRawAGL = 0;
+	float altitudeAGLOffset = 0;
+	const float ALPHA = 0.6;
+
     float rawToPressure(uint8_t msb, uint8_t csb, uint8_t lsb);
     float rawToAltitude(uint8_t msb, uint8_t csb, uint8_t lsb);
     float rawToTemperature(uint8_t msb, uint8_t lsb);
@@ -84,6 +91,8 @@ public:
     float getTemperature();
 
     void readSensorData();
+
+    void calibrateMPL3115A2();
 
     void setDataFromCombinedRaw(uint32_t combinedRaw);
 
