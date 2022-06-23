@@ -33,11 +33,11 @@ bool Robot::systemInit(){
 	imu->setAccScale(imu->getPlusMinus8Gs());
 	imu->calibrateGyro();
 
+	abServo->attach(23,600,2400);
+
 
 	// Datalogger
 	dataLogger->subsystemInit();
-
-
 
 	return true;
 
@@ -77,12 +77,32 @@ void Robot::beginStateMachine(){
 
 }
 
+void Robot::controlAirbrakes(float ctrlCMD) {
+	if(ctrlCMD < 0) {
+		ctrlCMD = 0;
+	} else if(ctrlCMD > 1) {
+		ctrlCMD = 1;
+	}
+
+	float cmdEffort = 180 - (ctrlCMD*34);
+
+	abServo->write(cmdEffort);
+}
+int16_t lastAccVal = 0;
+long int LaunchTime = 0;
+uint8_t impulseCheckBurnout = 0;
+uint8_t impulseCheckLaunch = 0;
 void Robot::updateStateMachine(uint32_t timestamp){
 
 	// Read sensors
 	baro->readSensorData();
 	imu->readSensorData();
-
+//	Serial.print(imu->getAccX());
+//	Serial.print(",");
+//	Serial.print(imu->getAccY());
+//	Serial.print(",");
+//	Serial.print(imu->getAccZ());
+//	Serial.println();
 	// Build a rocket telemetry data packet using sensor data
 	packet.setTimestamp(timestamp);
 	packet.setState(0);						// state zero hardcode for now
@@ -98,29 +118,6 @@ void Robot::updateStateMachine(uint32_t timestamp){
 
 	packet.updateToTelemPacket();			// for transmitter to use
 
-	switch(robotState) {
-
-		case ROBOT_STARTUP:
-			break;
-		case ROBOT_IDLE:
-			float currAccelZ = packet.getAccelZ() * (1/2048);
-			if(currAccelZ > 3) {
-				launchDetectionTicks++;
-				if(launchDetectionTicks > 10) {
-					robotState = ROBOT_LAUNCH;
-				}
-			}
-
-			break;
-		case ROBOT_LAUNCH:
-
-			if()
-			break;
-		case ROBOT_COAST:
-			break;
-	}
-
-
 	//Serial.println(packet.getAltitude());
 	//Serial.println(packet.getTemperature());
 
@@ -133,7 +130,38 @@ void Robot::updateStateMachine(uint32_t timestamp){
 	testPacket.updateFromTelemPacket();		// for receiver to use
 
 	//Serial.println(testPacket.getTemperature());
+	switch(robotState){
+	case ROBOT_IDLE:
+		int16_t currAcc = imu->getAccY();
+		if(abs(currAcc)>6000){ //3g
+			impulseCheckLaunch++;
+		}
+		else{
+			impulseCheckLaunch = 0;
+		}
+		if(impulseCheckLaunch>50){ //.5 seconds
+			LaunchTime = timestamp;
+			robotState = ROBOT_LAUNCH;
+		}
+		break;
+	case ROBOT_LAUNCH:
+		if((imu->getAccY()<0)){//negative acceleration
+			impulseCheckBurnout++;
+		}
+		else{
+			impulseCheckBurnout = 0;
+		}
+		if(((timestamp-LaunchTime)>5000) && (imu->getAccY()<0) && impulseCheckBurnout>33){ //third of a second
+			robotState = ROBOT_COAST;
+		}
+		else if((timestamp-LaunchTime)>8000){
+			robotState = ROBOT_COAST;
+		}
+		break;
+	case ROBOT_COAST:
 
+		break;
+	}
 }
 
 

@@ -47,7 +47,7 @@ bool DataLogger::transcieverInit() {
 	//transceiver->SetMode();
 	transceiver->SetAddressH(0);
 	transceiver->SetAddressL(0);
-	transceiver->SetChannel(65);			// 65 = 927MHz for E32-900T20D
+	transceiver->SetChannel(27);			// 65 = 927MHz for E32-900T20D
 	//transceiver->SetOptions();
 
 	transceiver->SetParityBit(0);	 		// SpeedParityBit
@@ -59,7 +59,7 @@ bool DataLogger::transcieverInit() {
 	transceiver->SetPullupMode(1);			// OptionPullup
 	transceiver->SetWORTIming(0);			// OptionWakeup
 	transceiver->SetFECMode(1);				// OptionFEC
-	transceiver->SetTransmitPower(3);		// 1W (0) default, 0.1W is 3
+	transceiver->SetTransmitPower(0);		// 1W (0) default, 0.1W is 3
 
 	transceiver->SaveParameters(PERMANENT);
 	transceiver->PrintParameters();

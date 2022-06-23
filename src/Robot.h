@@ -21,6 +21,9 @@
 
 #include "subsystems/DataLogger.h"
 
+#include <PWMServo.h>
+
+#define ORIENTATION_MOTOR 15
 
 
 /*
@@ -61,6 +64,8 @@ private:
 	ICM20948 * imu = new ICM20948(0x68);
 	MPL3115A2 * baro = new MPL3115A2();
 
+	PWMServo * abServo = new PWMServo();
+
 	int launchDetectionTicks = 0;
 
 
@@ -100,6 +105,8 @@ public:
 	void beginStateMachine();
 	void updateStateMachine(uint32_t timestamp);
 	void endStateMachine();
+
+	void controlAirbrakes(float ctrlCMD);
 
 	void setState(RobotState state);
 

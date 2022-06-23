@@ -148,10 +148,10 @@ public:
 		void onLoop(uint32_t timestamp){
 
 			// TODO handleRadioTransmit()
-//			if(logger_->timeToTransmit()) {
-//
-//				logger_->transmitTelemetry();
-//			}
+			if(logger_->timeToTransmit()) {
+
+				logger_->transmitTelemetry();
+			}
 
 
 			// Main system state machine
@@ -167,7 +167,7 @@ public:
 //				logger_->bufferFile.seek( 0 );  // 15372000
 
 
-				logger_->setState(DATALOGGER_RECEIVE_TELEM);
+				//logger_->setState(DATALOGGER_RECEIVE_TELEM);
 
 				break;
 

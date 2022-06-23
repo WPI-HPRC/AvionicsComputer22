@@ -73,7 +73,7 @@ void ICM20948::setAccScale(uint8_t value) {
 	uint8_t setting = 0;
 	setting = read8I2C(ACCEL_CONFIG_1);
 
-	setting &= B11111001;				// clear out old ACCEL_FS_SEL bits
+	setting &= B11011001;				// clear out old ACCEL_FS_SEL bits
 	setting |= value;					// mask in new ACCEL_FS_SEL bits
 
 	write8I2C(ACCEL_CONFIG_1, setting);
