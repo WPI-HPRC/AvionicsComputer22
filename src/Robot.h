@@ -30,7 +30,10 @@
  */
 typedef enum {
 	ROBOT_STARTUP,
-	ROBOT_IDLE
+	ROBOT_IDLE,
+	ROBOT_LAUNCH,
+	ROBOT_COAST,
+
 } RobotState;
 
 /*
@@ -57,6 +60,8 @@ private:
 	// Sensors
 	ICM20948 * imu = new ICM20948(0x68);
 	MPL3115A2 * baro = new MPL3115A2();
+
+	int launchDetectionTicks = 0;
 
 
 
@@ -95,6 +100,8 @@ public:
 	void beginStateMachine();
 	void updateStateMachine(uint32_t timestamp);
 	void endStateMachine();
+
+	void setState(RobotState state);
 
 };
 

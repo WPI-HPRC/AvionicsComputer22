@@ -29,8 +29,9 @@ bool Robot::systemInit(){
 	// Set up IMU
 	imu->init();
 
-	imu->setPlusMinus2000DPS();			// maximum angular rate measuring
-	imu->setPlusMinus16Gs();			// maximum acceleration measuring
+	imu->setGyroScale(imu->getPlusMinus2000DPS());
+	imu->setAccScale(imu->getPlusMinus8Gs());
+	imu->calibrateGyro();
 
 
 	// Datalogger
@@ -76,7 +77,6 @@ void Robot::beginStateMachine(){
 
 }
 
-
 void Robot::updateStateMachine(uint32_t timestamp){
 
 	// Read sensors
@@ -89,22 +89,50 @@ void Robot::updateStateMachine(uint32_t timestamp){
 	//packet.setAltitude(9999.99);
 	//packet.setTemperature(-4.5);
 	packet.setAltAndTempCombined(baro->getPressureAndTempCombined());
-	packet.setAccelX(imu->getRawAccelX());
-	packet.setAccelY(imu->getRawAccelY());
-	packet.setAccelZ(imu->getRawAccelZ());
-	packet.setGyroX(imu->getRawGyroX());
-	packet.setGyroY(imu->getRawGyroY());
-	packet.setGyroZ(imu->getRawGyroZ());
+	packet.setAccelX(imu->getAccX());
+	packet.setAccelY(imu->getAccY());
+	packet.setAccelZ(imu->getAccZ());
+	packet.setGyroX(imu->getGyroX());
+	packet.setGyroY(imu->getGyroY());
+	packet.setGyroZ(imu->getGyroZ());
 
 	packet.updateToTelemPacket();			// for transmitter to use
 
-	packet.updateFromTelemPacket();			// for receiver to use
-	Serial.println(packet.getAltitude());
+	switch(robotState) {
+
+		case ROBOT_STARTUP:
+			break;
+		case ROBOT_IDLE:
+			float currAccelZ = packet.getAccelZ() * (1/2048);
+			if(currAccelZ > 3) {
+				launchDetectionTicks++;
+				if(launchDetectionTicks > 10) {
+					robotState = ROBOT_LAUNCH;
+				}
+			}
+
+			break;
+		case ROBOT_LAUNCH:
+
+			if()
+			break;
+		case ROBOT_COAST:
+			break;
+	}
+
+
+	//Serial.println(packet.getAltitude());
 	//Serial.println(packet.getTemperature());
 
 	// Update the packet for the dataLogger to transmit
 	dataLogger->setCurrentDataPacket(packet.getTelemRocketPacketPtr(), 20);
 
+
+	// Testing copying data from one packet object to another
+	testPacket.setRocketTelemPacket(packet.getTelemRocketPacketPtr());
+	testPacket.updateFromTelemPacket();		// for receiver to use
+
+	//Serial.println(testPacket.getTemperature());
 
 }
 

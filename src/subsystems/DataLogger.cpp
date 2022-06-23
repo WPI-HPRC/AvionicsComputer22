@@ -47,7 +47,7 @@ bool DataLogger::transcieverInit() {
 	//transceiver->SetMode();
 	transceiver->SetAddressH(0);
 	transceiver->SetAddressL(0);
-	transceiver->SetChannel(55);			// 17 = 917MHz for E32-915T20D, 55 for E32-900T20D
+	transceiver->SetChannel(65);			// 65 = 927MHz for E32-900T20D
 	//transceiver->SetOptions();
 
 	transceiver->SetParityBit(0);	 		// SpeedParityBit
@@ -99,23 +99,6 @@ bool DataLogger::flashMemoryInit() {
 
 	return fileCreation;
 
-}
-
-
-/*
- *
- */
-bool DataLogger::handleRadioTransmit() {
-
-	if(timeToTransmit()) {
-
-		transmitTelemetry();
-		//Serial.print(F("TRANSMIT at: ")); //Serial.println(timestamp);
-
-		return true;
-	}
-
-	return false;
 }
 
 
@@ -381,7 +364,17 @@ void DataLogger::writeSmallBufferToCircBuffer() {
  *
  */
 bool DataLogger::timeToTransmit() {
-	return transmitTimer.check() == 1;			//check if the timer has passed it's interval
+
+	if(timer > 10){
+		timer = 0;
+		return true;
+	} else {
+		timer++;
+		return false;
+	}
+
+
+	//return transmitTimer.check() == 1;			//check if the timer has passed it's interval
 }
 
 
@@ -393,7 +386,7 @@ bool DataLogger::transmitTelemetry() {
 	bool sendSuccess = false;
 
 
-	uint16_t dataPacketSizeToTransmit = 20;				//TODO don't hard code
+	uint16_t dataPacketSizeToTransmit = 20;
 
 	sendSuccess = transceiver->SendStruct(currentDataPacket, dataPacketSizeToTransmit);
 
@@ -409,13 +402,12 @@ void DataLogger::receiveTelemetry() {
 
 	if(transceiver->available()) {
 
-		uint16_t telemDataPacketSize = 20;				//TODO don't hard code
+		uint16_t telemDataPacketSize = 20;
 
 		transceiver->GetStruct(&currentDataPacket, telemDataPacketSize);
 
-		// Send packet to groundstation on good receive
-		//printCurrentPacketToGroundstation();
-		printCurrentPacketToSerialMonitor();
+		// Send packet to groundstation on good recieve
+		printCurrentPacketToGroundstation();
 
 	}
 
@@ -458,9 +450,8 @@ void DataLogger::printCurrentPacketToGroundstation() {
 	// Pass the data in the currentDataPacket of the dataLogger to a RocketDataPacket object
 	RocketDataPacket packet;
 	packet.setRocketTelemPacket(currentDataPacket);
-	packet.updateFromTelemPacket();									// for receiver to use
+	packet.updateFromTelemPacket();
 
-	// Break up the data into bytes for sending to the ground station
 	uint32_t timestamp = packet.getTimestamp();
 	uint8_t* timestampBytes = (uint8_t*) &timestamp;
 
@@ -480,7 +471,6 @@ void DataLogger::printCurrentPacketToGroundstation() {
 
 	Serial.print(PRINT_BEG);			// data string start bytes
 
-	// Timestamp and state
     Serial.print(TIMESTAMP);
     Serial.write(timestampBytes[3]);
     Serial.write(timestampBytes[2]);
@@ -490,7 +480,6 @@ void DataLogger::printCurrentPacketToGroundstation() {
     Serial.print(STATE);
     Serial.write(0);  					// state zero hardcode for now
 
-    // Barometer
     Serial.print(ALTITUDE);
 	Serial.write(altitudeBytes[3]);
 	Serial.write(altitudeBytes[2]);
@@ -545,7 +534,9 @@ void DataLogger::printCurrentPacketToGroundstation() {
 	Serial.write(gyrZ[1]);
 	Serial.write(gyrZ[0]);
 
+
     Serial.print(PRINT_END);			// Data string end bytes
+
 
 }
 
@@ -553,52 +544,83 @@ void DataLogger::printCurrentPacketToGroundstation() {
 /*
  *
  */
-void DataLogger::printCurrentPacketToSerialMonitor() {
-
-	// Pass the data in the currentDataPacket of the dataLogger to a RocketDataPacket object
-	RocketDataPacket packet;
-	packet.setRocketTelemPacket(currentDataPacket);
-	packet.updateFromTelemPacket();									// for receiver to use
-
-	// Timestamp and state
-	Serial.print(packet.getTimestamp()); Serial.print(", ");
-	Serial.print(packet.getState());	 Serial.print(", ");
-
-	// Barometer
-	Serial.print(packet.getAltitude()); 	Serial.print(", ");
-	Serial.print(packet.getTemperature()); 	Serial.print(", ");
-
-	// IMU
-	const float ACCEL_LSB = 2048;    // 2048 LSB / G
-	const float GYRO_LSB  = 16.4;	 // 16.4 LSB / (dps)
-
-	int16_t rawAccX = packet.getAccelX();
-	int16_t rawAccY = packet.getAccelY();
-	int16_t rawAccZ = packet.getAccelZ();
-
-	int16_t rawGyroX = packet.getGyroX();
-	int16_t rawGyroY = packet.getGyroY();
-	int16_t rawGyroZ = packet.getGyroZ();
-
-	float accX = (float) rawAccX * (1 / ACCEL_LSB);
-	float accY = (float) rawAccY * (1 / ACCEL_LSB);
-	float accZ = (float) rawAccZ * (1 / ACCEL_LSB);
-
-	float gyroX = (float) rawGyroX * (1 / GYRO_LSB);
-	float gyroY = (float) rawGyroY * (1 / GYRO_LSB);
-	float gyroZ = (float) rawGyroZ * (1 / GYRO_LSB);
-
-	Serial.print(accX); Serial.print(", ");
-	Serial.print(accY); Serial.print(", ");
-	Serial.print(accZ); Serial.print(", ");
-
-	Serial.print(gyroX); Serial.print(", ");
-	Serial.print(gyroY); Serial.print(", ");
-	Serial.print(gyroZ);
-
-	Serial.println();
-
-}
+//void DataLogger::printPacketToSerialMonitor(DataPacket packet) {
+//
+//	// Timestamp (and state)
+//	uint32_t ts = 0;
+//	uint8_t * timestampBytes = (uint8_t *) &ts;
+//	timestampBytes[3] = packet.count0;
+//	timestampBytes[2] = packet.count1;
+//	timestampBytes[1] = packet.count2;
+//	timestampBytes[0] = packet.count3;
+//	//Serial.print("TIMESTAMP IS: ");
+//	Serial.print(ts); Serial.print(", ");
+//
+//	// Barometer
+//	Serial.print(packet.count4); Serial.print(", ");
+//	Serial.print(packet.count5); Serial.print(", ");
+//	Serial.print(packet.count6); Serial.print(", ");
+//	Serial.print(packet.count7); Serial.print(", ");
+//
+//	// IMU
+//	const float ACCEL_LSB = 2048;    // 2048 LSB / G
+//	const float GYRO_LSB  = 16.4;	 // 16.4 LSB / (dps)
+//
+//	int16_t rawAccX, rawAccY, rawAccZ = 0;
+//	uint8_t * bytesAccX = (uint8_t *) &rawAccX;
+//	uint8_t * bytesAccY = (uint8_t *) &rawAccY;
+//	uint8_t * bytesAccZ = (uint8_t *) &rawAccZ;
+//
+//	int16_t rawGyroX, rawGyroY, rawGyroZ = 0;
+//	uint8_t * bytesGyroX = (uint8_t *) &rawGyroX;
+//	uint8_t * bytesGyroY = (uint8_t *) &rawGyroY;
+//	uint8_t * bytesGyroZ = (uint8_t *) &rawGyroZ;
+//
+//	bytesAccX[1] = packet.count8;  bytesAccX[0] = packet.count9;
+//	bytesAccY[1] = packet.count10; bytesAccY[0] = packet.count11;
+//	bytesAccZ[1] = packet.count12; bytesAccZ[0] = packet.count13;
+//
+//	bytesGyroX[1] = packet.count14; bytesGyroX[0] = packet.count15;
+//	bytesGyroY[1] = packet.count16; bytesGyroY[0] = packet.count17;
+//	bytesGyroZ[1] = packet.count18; bytesGyroZ[0] = packet.count19;
+//
+//	float accX = (float) rawAccX * 1 / ACCEL_LSB;
+//	float accY = (float) rawAccY * 1 / ACCEL_LSB;
+//	float accZ = (float) rawAccZ * 1 / ACCEL_LSB;
+//
+//	float gyroX = (float) rawGyroX * 1 / GYRO_LSB;
+//	float gyroY = (float) rawGyroY * 1 / GYRO_LSB;
+//	float gyroZ = (float) rawGyroZ * 1 / GYRO_LSB;
+//
+//	Serial.print(accX); Serial.print(", ");
+//	Serial.print(accY); Serial.print(", ");
+//	Serial.print(accZ); Serial.print(", ");
+//
+//	Serial.print(gyroX); Serial.print(", ");
+//	Serial.print(gyroY); Serial.print(", ");
+//	Serial.print(gyroZ); //Serial.print(", ");
+//
+//	Serial.println();
+//
+//
+//
+////	float voltage = 0;
+////	uint8_t * voltageBytes = (uint8_t *) &voltage;
+////	voltageBytes[3] = packet.count4;
+////	voltageBytes[2] = packet.count5;
+////	voltageBytes[1] = packet.count6;
+////	voltageBytes[0] = packet.count7;
+//	//Serial.print("VOLTAGE IS: "); Serial.println(voltage);
+//	//Serial.println(voltage);
+//
+////	uint8_t sensorVal = 0;
+////	uint8_t * pinBytes = (uint8_t *) &sensorVal;
+////	pinBytes[0] = packet.count4;
+////	Serial.println(sensorVal);
+//
+//
+//
+//}
 
 
 /*
@@ -629,6 +651,5 @@ void DataLogger::registerLoops(Looper * runningLooper) {
 void DataLogger::printOutput() {
 	Serial.println(F("TEST"));
 }
-
 
 

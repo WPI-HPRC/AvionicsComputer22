@@ -87,6 +87,8 @@ private:
 	const uint32_t TRANSMIT_PERIOD = 100;						// ms, telemetry sending period
 	MetroTimer transmitTimer = MetroTimer(TRANSMIT_PERIOD);		// passed to timer in ms
 
+	uint8_t timer = 0;
+
 
 	// Transceiver radio pins
 	const uint8_t PIN_M0  = E32_LORA_M0;
@@ -107,15 +109,12 @@ private:
 	bool transcieverInit();
 	bool timeToTransmit();
 	bool transmitTelemetry();
+
 	void receiveTelemetry();
-
-	bool handleRadioTransmit();
-
 
 	//void parseDataForGroundstation();
 	void printCurrentPacketToGroundstation();
-	void printCurrentPacketToSerialMonitor();
-
+//	void printPacketToSerialMonitor(DataPacket packet);
 //	void printRawDataToSerialMonitor(DataPacket packet);
 
 
@@ -143,14 +142,16 @@ public:
 			Serial.print("Buffer begin addr: "); Serial.println(logger_->begDataAddress);
 			Serial.print("Buffer end addr: "); Serial.println(logger_->endDataAddress);
 
-			logger_->transmitTimer.reset();			// prevents garbled offset packet data
 
 		}
 
 		void onLoop(uint32_t timestamp){
 
-			// Transmitting the same data always, regardless of system state
-			logger_->handleRadioTransmit();
+			// TODO handleRadioTransmit()
+//			if(logger_->timeToTransmit()) {
+//
+//				logger_->transmitTelemetry();
+//			}
 
 
 			// Main system state machine
@@ -166,7 +167,7 @@ public:
 //				logger_->bufferFile.seek( 0 );  // 15372000
 
 
-				//logger_->setState(DATALOGGER_RECEIVE_TELEM);
+				logger_->setState(DATALOGGER_RECEIVE_TELEM);
 
 				break;
 
