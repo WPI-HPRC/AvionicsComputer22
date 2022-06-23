@@ -71,6 +71,19 @@ void Airbrakes::pullSensorValues() {
 	accel_raw = imu->getAccRawValues();
 }
 
+void Airbrakes::lowPassFilter() {
+
+	if (!init) {
+		accelZ = (float) accel_raw.z;
+		prevAccelZ = accelZ;
+		init = true;
+	} else {
+		prevAccelZ = accelZ;
+		accelZ = ((float) accel_raw.z) + ALPHA * (accelZ - ((float)accel_raw.z));
+	}
+
+}
+
 /*
  * predicts apogee
  * inputs: xCurr, cd
@@ -164,8 +177,8 @@ void Airbrakes::updateStateMachine(uint32_t timestamp){
 		case DATA_COLLECTION:
 			// input raw data values into Kalman filter, get altitude/latVelocity/vertVelocity/cd
 			pullSensorValues();
-			// cd = kalmanFilter(pressure_raw, temp_raw, gyro_raw, accel_raw, cd);
-			// need some sort of vector returned from kalman to include all values required
+			lowPassFilter();
+
 
 			airbrakesState = UPDATE_AIRBRAKES;
 			break;

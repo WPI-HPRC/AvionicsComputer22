@@ -55,11 +55,17 @@ private:
 	Vector gyro_raw;
 	Vector accel_raw;
 
+	bool init = false;
+	float accelZ;
+	float prevAccelZ;
+	const float ALPHA = 0.6;
+
 	// Kalman filtered values
 	std::array<double, NSTATES> * xCurr = new std::array<double, NSTATES>(); // in the order of px py vx vy
 	double cd = 0;
 
 	void pullSensorValues();
+	void lowPassFilter();
 	void mapToAirbrakes();
 
 	// helper functions
