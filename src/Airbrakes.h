@@ -16,7 +16,6 @@
 #include "SystemInterface.h"
 #include "loops/Looper.h"
 #include "loops/loop.h"
-#include "utilities/KalmanFilter.h"
 
 #include "peripherals/ICM20948.h"
 #include "peripherals/MPL3115A2.h"
@@ -29,6 +28,7 @@
 #define A 0.0192896388
 #define ATMO_PRESSURE 0 				// TODO: FILL THIS IN ON LAUNCH DAY
 #define NSTATES 4
+#define DT 0.01
 
 enum AirbrakesState {
 
@@ -41,12 +41,12 @@ class Airbrakes : public SystemInterface {
 
 private:
 
-	AirbrakesState airbrakesState = DEV;
+//	AirbrakesState airbrakesState = DEV;
 
 	ICM20948 * imu = new ICM20948(ICM_ADDRESS);
 	MPL3115A2 * baro = new MPL3115A2();
 
-	ServoMotor * airbrakesMotor = new ServoMotor(SERVO_PIN);
+	ServoMotor * airbrakesServo = new ServoMotor(SERVO_PIN);
 
 	// latest raw sensor values to send into Kalman filter
 	float pressure_raw;
@@ -59,14 +59,19 @@ private:
 	float accelZ;
 	float prevAccelZ;
 	const float ALPHA = 0.6;
+//
+//	float altitude = 0;
+//
+//	float totalVel = 0;
 
 	// Kalman filtered values
-	std::array<double, NSTATES> * xCurr = new std::array<double, NSTATES>(); // in the order of px py vx vy
-	double cd = 0;
-
-	void pullSensorValues();
-	void lowPassFilter();
-	void mapToAirbrakes();
+//	std::array<double, NSTATES> * xCurr = new std::array<double, NSTATES>(); // in the order of px py vx vy
+//	double cd = 0;
+//	double targetCD = 0;
+//	double rho = 0;
+//	double dragTarget = 0;
+//	double airbrakeDragTarget = 0;
+//	double qPsi;
 
 	// helper functions
 	std::array<double, NSTATES> rk2(double dt, std::array<double, NSTATES> xCurr, double cd);
@@ -78,33 +83,19 @@ public:
 
 	Airbrakes();
 
-	class AirbrakesLoop : public Loop {
-		Airbrakes * airbrakes_;
-
-	public:
-		AirbrakesLoop(Airbrakes * instance){
-			airbrakes_ = instance;
-		};
-
-		void onStart(uint32_t timestamp){
-			airbrakes_->beginStateMachine();
-		}
-		void onLoop(uint32_t timestamp){
-			airbrakes_->updateStateMachine(timestamp);
-		}
-		void onStop(uint32_t timestamp){
-			airbrakes_->endStateMachine();
-		}
-	} * airbrakesLoop = new AirbrakesLoop(this);		// instantiate the main system loop and pass it the system instance
-
 	bool systemInit();
-	void registerAllLoops(Looper * runningLooper);
+	void extend(uint8_t ext); // only two functions we're actually using
+//	void registerAllLoops(Looper * runningLooper);
 
 	void zeroAllSensors();
+	void pullSensorValues();
+	void lowPassFilter();
+	void mapToAirbrakes();
+	void updateAirbrakes();
 
-	void beginStateMachine();
-	void updateStateMachine(uint32_t timestamp);
-	void endStateMachine();
+//	void beginStateMachine();
+//	void updateStateMachine(uint32_t timestamp);
+//	void endStateMachine();
 
 };
 

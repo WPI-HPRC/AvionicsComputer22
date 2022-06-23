@@ -81,27 +81,9 @@ void Robot::registerAllLoops(Looper * runningLooper){
 // Call this in the IDLE state
 void Robot::zeroAllSensors(){
 
-	//robotStateEstimator->reset(millis());
-
-	//selfRighting->zeroSensors();
-
-	calibrateMPL3115A2();
+	baro->calibrateMPL3115A2();
 
 }
-
-/**
- * Uses a moving average over 1000 iterations to calculate an offset to set the altitude to ground level at start up
- */
-void Robot::calibrateMPL3115A2() {
-	for (int i = 0; i < 1000; i++) {
-		altitudePrevAGL = altitudeCurrentAGL;
-		altitudeRawAGL = baro->getAltitude();
-		altitudeCurrentAGL = altitudeRawAGL + ALPHA * (altitudePrevAGL - altitudeRawAGL);
-	}
-	// Set the offset value for later use in subtraction
-	altitudeAGLOffset = altitudeCurrentAGL;
-}
-
 
 /*
  * Configuring robot subsystems for start of mission states sequence
@@ -109,22 +91,14 @@ void Robot::calibrateMPL3115A2() {
 void Robot::beginStateMachine(){
 
 	//zeroAllSensors();
+//
+//	altitude = baro->getAltitude();
+//	prevAltitude = altitude;
+//
+//	// AGL
+//	altitudeCurrentAGL = baro->getAltitude();
+//	altitudePrevAGL = altitudeCurrentAGL;
 
-	altitude = baro->getAltitude();
-	prevAltitude = altitude;
-
-	// AGL
-	altitudeCurrentAGL = baro->getAltitude();
-	altitudePrevAGL = altitudeCurrentAGL;
-
-}
-
-void Robot::EWMAFilter() {
-	prevAltitude = altitude;
-	rawAltitude = baro->getAltitude() - altitudeAGLOffset;
-
-	// Filter
-	altitude = 	rawAltitude + ALPHA * (prevAltitude - rawAltitude);
 }
 
 void Robot::updateStateMachine(uint32_t timestamp){
@@ -194,50 +168,57 @@ void Robot::updateStateMachine(uint32_t timestamp){
 	//	Serial.println(temperature);
 
 	// Main rocket state machine
-//	switch (robotState) {
-//
-//	case BOTTOM_OF_HIGGINS:
-//
-//		if (altitude > altitudeThreshold) {
-//			robotState = TOP_OF_HIGGINS;
-//			Serial.printf("STATE CHANGE: From BOTTOM_OF_HIGGINS to TOP_OF_HIGGINS at %f", altitude);
-//			Serial.println();
-//		}
-//
-//		break;
-//
-//	case TOP_OF_HIGGINS:
-//
-//		if (altitude <= altitudeThreshold) {
-//			robotState = BOTTOM_OF_HIGGINS;
-//			Serial.printf("STATE CHANGE: From TOP_OF_HIGGINS to BOTTOM_OF_HIGGINS at %f", altitude);
-//			Serial.println();
-//		}
-//
-//		break;
-//
-//	case IDLE:
-//		zeroAllSensors();
-//		if (altitude > altitudeThreshold) {
-//			robotState = TOP_OF_HIGGINS;
-//			Serial.printf("STATE CHANGE: From IDLE to TOP_OF_HIGGINS at %f", altitude);
-//			Serial.println();
-//		}
-//		else {
-//			robotState = BOTTOM_OF_HIGGINS;
-//			Serial.printf("STATE CHANGE: From IDLE to BOTTOM_OF_HIGGINS at %f", altitude);
-//			Serial.println();
-//		}
-//
-//		break;
-//
-//	default:
-//
-//		Serial.print("Code == broke");
-//
-//		break;
-//
-//	}
+	switch (robotState) {
+
+	case PAD:
+		// airbrakes commanding closed, do nothing
+		airbrakes->extend(0);
+		break;
+
+	case BURN:
+		// stay closed, start integrating accel readings + read baro
+		airbrakes->extend(0);
+		break;
+
+	case COAST:
+		// start commanding airbrakes, keep integrating
+		// for every half sec in state, inc ext 25%
+		if (count < 100) {
+			airbrakes->extend(airbrakesExt);
+		} else if (count == 100 && airbrakesExt < 3 && out) {
+			airbrakes->extend(airbrakesExt);
+			airbrakesExt++;
+			count = 0;
+		} else if (count == 100 && airbrakesExt == 3) {
+			airbrakesExt--;
+			count = 0;
+			out = false;
+		} else if (count == 100 && airbrakesExt < 3 && !out) {
+			airbrakesExt--;
+			count = 0;
+		} else {
+			airbrakes->extend(0);
+			robotState = DESCENT;
+		}
+
+
+//		airbrakes->updateAirbrakes();
+
+		break;
+
+	case DESCENT:
+		// command closed
+		airbrakes->extend(0);
+
+		break;
+
+	default:
+
+		Serial.print("Code == broke");
+
+		break;
+
+	}
 
 }
 

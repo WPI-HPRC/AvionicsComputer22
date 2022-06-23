@@ -14,20 +14,20 @@ Airbrakes::Airbrakes() {
 
 bool Airbrakes::systemInit(){
 
-	// Set up barometer
-	baro->init();
-	baro->setModeAltimeter();
-	baro->setOverSample6ms();
+//	// Set up barometer
+//	baro->init();
+//	baro->setModeAltimeter();
+//	baro->setOverSample6ms();
+//
+//	// Set up IMU
+//	imu->init();
+//	imu->getPlusMinus2000DPS();			// maximum angular rate measuring
+//	imu->getPlusMinus16Gs();			// maximum acceleration measuring
+//
+//
+//	//	delay(10);							// let sensors start up
 
-	// Set up IMU
-	imu->init();
-	imu->getPlusMinus2000DPS();			// maximum angular rate measuring
-	imu->getPlusMinus16Gs();			// maximum acceleration measuring
-
-
-	//	delay(10);							// let sensors start up
-
-	airbrakesMotor->enable();
+	airbrakesServo->enable();
 
 	Serial.print("START UP STATE: IDLE");
 
@@ -37,22 +37,17 @@ bool Airbrakes::systemInit(){
 }
 
 /*
- * Function to register all loops to the system looper. The looper must have the
- * total number of system loops predefined, TOTAL_LOOPS must equal the number of
- * registerLoop() calls in this function, see Constants.h
- * @param runningLooper is the looper instance of the system manager to call
- * for adding loops
+ * Takes in a number between 0 and 4 and translates that into an extension between 0% and 100%
  */
-void Airbrakes::registerAllLoops(Looper * runningLooper){
+void Airbrakes::extend(uint8_t ext) {
 
-	runningLooper->registerLoop(airbrakesLoop);
-
+	airbrakesServo->setPosition(ext/4*300); // assuming 0-300 is the range of possible positions
 }
 
 // Call this in the IDLE state
 void Airbrakes::zeroAllSensors(){
 
-	baro->calibrateMPL3115A2();
+//	baro->calibrateMPL3115A2();
 
 }
 
@@ -136,6 +131,48 @@ double Airbrakes::predictApogee (std::array<double, NSTATES> xCurr, double cd) {
     return xNew[1];
 }
 
+void Airbrakes::updateAirbrakes() {
+	float highCD = 1;
+	float lowCD = 0.1;
+	vector<double> currCD[3]; // change this and interpolate code to arrays
+	vector<double> apogee[3];
+
+//	totalVel = totalVel + (accelZ * DT);
+//	rho = 1.212 - (0.0001 * altitude);
+//	dynPressure = 1/2 * rho * totalVel * totalVel;
+//	qPsi = dynPressure * 0.000145038;
+//	flightPathAngle = atan2(vertVelocity, latVelocity);
+//	totalDrag = VEHICLE_MASS * (accelZ + (9.80665 * sin(flightPathAngle))); // magic # that
+//
+//	airbrakeDragLb = -0.1503 + 3.646*currExt + 0.07924*qPsi + -10.17*pow(currExt,2) + 2.127*currExt*qPsi + 6.642*pow(currExt,3) + 2.31*pow(currExt,2)*qPsi;
+//	airbrakeDrag = airbrakeDragLb * 4.44822; // converts to N
+//	vehicleDrag = totalDrag - airbrakeDrag;
+//	vehicleCD = vehicleDrag / dynPressure * A;
+//
+//
+//	for (int i=0; i<3; i++) {
+//		currCD[i] = (highCD+lowCD)/2;
+//		apogee[i] = predictApogee(*xCurr,currCD[i]);
+//		if (apogee[i] > 3048+1377) {				// 1377 is the elevation at the launch site, should probably be a const
+//			lowCD = currCD[i];
+//		} else if (apogee[i] < 3048+1377) {
+//			highCD = currCD[i];
+//		}
+//	}
+//
+//	targetCD = interpolate(*apogee, *currCD, (double) 3048+1377);
+//
+//	dragTarget = 1/2 * rho * totalVel * totalVel * targetCD * A;
+//	airbrakeDragTarget = dragTarget - (1/2 * rho * totalVel^2 * vehicleCD * A);
+//
+//	double * roots[3];
+//	targetExt = SolveP3(*roots, 6.642, -10.17+2.231*qPsi, 3.646+2.127*qPsi, -0.1503+0.07924*qPsi);
+//
+//	targetExt = min(1,max(0,targetExt));
+
+	mapToAirbrakes();
+}
+
 /*
  * Takes CD and maps it to an extension of the airbrakes, then commands the airbrakes to extend to that length
  */
@@ -143,67 +180,9 @@ void Airbrakes::mapToAirbrakes() {
 
 	// determine airbrakes length based on cd
 
+
 	// command servo to certain pos based on length
 	// 1:1 ratio, aka 100% rotation = 100% extension
-
-}
-
-/*
- * Configuring airbrakes subsystems for start of mission states sequence
- */
-void Airbrakes::beginStateMachine(){
-
-	zeroAllSensors();
-
-}
-
-//void Airbrakes::EWMAFilter() {
-//	prevAltitude = altitude;
-//	rawAltitude = baro->getAltitude() - altitudeAGLOffset;
-//
-//	// Filter
-//	altitude = 	rawAltitude + ALPHA * (prevAltitude - rawAltitude);
-//}
-
-void Airbrakes::updateStateMachine(uint32_t timestamp){
-
-	// airbrakes state machine
-	switch (airbrakesState) {
-
-		case DEV:
-
-			break;
-
-		case DATA_COLLECTION:
-			// input raw data values into Kalman filter, get altitude/latVelocity/vertVelocity/cd
-			pullSensorValues();
-			lowPassFilter();
-
-
-			airbrakesState = UPDATE_AIRBRAKES;
-			break;
-
-		case UPDATE_AIRBRAKES:
-			// run simulations
-			cd = predictApogee(*xCurr, cd);
-
-			// map to extension and activate airbrakes
-			mapToAirbrakes();
-
-			airbrakesState = DATA_COLLECTION;
-			break;
-
-		default:
-
-			Serial.print("Code == broke");
-			break;
-
-	}
-
-}
-
-
-void Airbrakes::endStateMachine(){
 
 }
 

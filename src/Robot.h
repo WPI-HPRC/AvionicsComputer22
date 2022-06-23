@@ -20,6 +20,8 @@
 #include "peripherals/ICM20948.h"
 #include "peripherals/MPL3115A2.h"
 
+#include "Airbrakes.h"
+
 
 // TODO make these properly
 #define PIN_M0 2
@@ -34,8 +36,10 @@
  */
 enum RobotState {
 
-	BOTTOM_OF_HIGGINS,
-	TOP_OF_HIGGINS,
+	PAD,
+	BURN,
+	COAST,
+	DESCENT,
 	IDLE
 };
 
@@ -57,6 +61,8 @@ private:
 	// Sensors
 	ICM20948 * imu = new ICM20948(0x68);
 	MPL3115A2 * baro = new MPL3115A2();
+
+	Airbrakes * airbrakes = new Airbrakes();
 
 	// Data registers of sensors
 	//uint8_t baroRegisters[5];
@@ -103,13 +109,18 @@ private:
 
 	float temperature = 0;
 
-	const float ALPHA = 0.6; // TODO needs to be tuned
+//	const float ALPHA = 0.6; // TODO needs to be tuned
+//
+//	// AGL
+//	float altitudePrevAGL = 0;
+//	float altitudeCurrentAGL = 0;
+//	float altitudeRawAGL = 0;
+//	float altitudeAGLOffset = 0;
 
-	// AGL
-	float altitudePrevAGL = 0;
-	float altitudeCurrentAGL = 0;
-	float altitudeRawAGL = 0;
-	float altitudeAGLOffset = 0;
+
+	bool out = true;
+	int count = 0;
+	uint8_t airbrakesExt = 1;
 
 public:
 
