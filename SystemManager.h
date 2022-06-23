@@ -11,6 +11,7 @@
 
 #include <Wire.h>
 #include <SPI.h>
+#include <Eigen.h>
 
 #include "Constants.h"
 #include "src/loops/Looper.h"

@@ -8,26 +8,28 @@
 #ifndef SRC_AIRBRAKES_H_
 #define SRC_AIRBRAKES_H_
 
+#include <cmath>
+#include <array>
 #include "Arduino.h"
 
 #include "../Constants.h"
 #include "SystemInterface.h"
 #include "loops/Looper.h"
 #include "loops/loop.h"
+#include "utilities/KalmanFilter.h"
 
 #include "peripherals/ICM20948.h"
 #include "peripherals/MPL3115A2.h"
+#include "peripherals/ServoMotor.h"
 
 #define ICM_ADDRESS 0x68
+#define SERVO_PIN 0 					// TODO: determine which pin this is
+
 #define VEHICLE_MASS 57.115 / 2.205
 #define A 0.0192896388
-#define ATMO_PRESSURE 0 				// TODO: Fill this in day of launch
+#define ATMO_PRESSURE 0 				// TODO: FILL THIS IN ON LAUNCH DAY
+#define NSTATES 4
 
-/*
- * Airbrakes have TODO primary states of autonomous operation throughout its mission which begins when the system is powered on
- *
- * STATE DETAILS
- */
 enum AirbrakesState {
 
 	DEV,
@@ -44,7 +46,7 @@ private:
 	ICM20948 * imu = new ICM20948(ICM_ADDRESS);
 	MPL3115A2 * baro = new MPL3115A2();
 
-	// will need a good ol servo object here
+	ServoMotor * airbrakesMotor = new ServoMotor(SERVO_PIN);
 
 	// latest raw sensor values to send into Kalman filter
 	float pressure_raw;
@@ -54,14 +56,16 @@ private:
 	Vector accel_raw;
 
 	// Kalman filtered values
-	float altitude = 0;
-	float latVelocity = 0;
-	float vertVelocity = 0;
-	float cd = 0; 				// sent into the next iteration of Kalman filtering
+	std::array<double, NSTATES> * xCurr = new std::array<double, NSTATES>(); // in the order of px py vx vy
+	double cd = 0;
 
 	void pullSensorValues();
-	void runSimulations();
 	void mapToAirbrakes();
+
+	// helper functions
+	std::array<double, NSTATES> rk2(double dt, std::array<double, NSTATES> xCurr, double cd);
+	std::array<double, NSTATES> dxdt (double t, std::array<double, 4> x, double cd);
+	double Airbrakes::predictApogee (std::array<double, NSTATES> xCurr, double cd);
 
 
 public:

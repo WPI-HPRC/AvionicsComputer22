@@ -52,8 +52,8 @@ bool Robot::systemInit(){
 	// Set up IMU
 	imu->init();
 
-	imu->setPlusMinus2000DPS();			// maximum angular rate measuring
-	imu->setPlusMinus16Gs();			// maximum acceleration measuring
+	imu->getPlusMinus2000DPS();			// maximum angular rate measuring
+	imu->getPlusMinus16Gs();			// maximum acceleration measuring
 
 
 	//	delay(10);							// let sensors start up
@@ -132,7 +132,7 @@ void Robot::updateStateMachine(uint32_t timestamp){
 	uint8_t * timestampBytes = (uint8_t *) &timestamp;
 
 	imu->readSensorData();
-	uint8_t * gyroAccelBytes = imu->getRawSensorRegisters();
+//	uint8_t * gyroAccelBytes = imu->getRawSensorRegisters();
 	//	imu->printVector(imu->getAccRawValues());
 	//Serial.println(imu->getTempRawValues());
 
