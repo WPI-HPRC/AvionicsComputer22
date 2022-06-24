@@ -34,8 +34,7 @@ bool Robot::systemInit(){
 	imu->calibrateGyro();
 
 	abServo->attach(23,600,2400);
-
-
+	Serial.println("Sensors & Servo Init Complete");
 	// Datalogger
 	dataLogger->subsystemInit();
 
@@ -74,7 +73,6 @@ void Robot::zeroAllSensors(){
 void Robot::beginStateMachine(){
 
 	//zeroAllSensors();
-
 }
 
 void Robot::controlAirbrakes(float ctrlCMD) {
@@ -92,6 +90,9 @@ int16_t lastAccVal = 0;
 long int LaunchTime = 0;
 uint8_t impulseCheckBurnout = 0;
 uint8_t impulseCheckLaunch = 0;
+long int CoastTime = 0;
+float LastPressure = 0;
+float pressureCheck = 0;
 void Robot::updateStateMachine(uint32_t timestamp){
 
 	// Read sensors
@@ -131,36 +132,60 @@ void Robot::updateStateMachine(uint32_t timestamp){
 
 	//Serial.println(testPacket.getTemperature());
 	switch(robotState){
-	case ROBOT_IDLE:
-		int16_t currAcc = imu->getAccY();
-		if(abs(currAcc)>6000){ //3g
-			impulseCheckLaunch++;
-		}
-		else{
-			impulseCheckLaunch = 0;
-		}
-		if(impulseCheckLaunch>50){ //.5 seconds
-			LaunchTime = timestamp;
-			robotState = ROBOT_LAUNCH;
-		}
-		break;
-	case ROBOT_LAUNCH:
-		if((imu->getAccY()<0)){//negative acceleration
-			impulseCheckBurnout++;
-		}
-		else{
-			impulseCheckBurnout = 0;
-		}
-		if(((timestamp-LaunchTime)>5000) && (imu->getAccY()<0) && impulseCheckBurnout>33){ //third of a second
-			robotState = ROBOT_COAST;
-		}
-		else if((timestamp-LaunchTime)>8000){
-			robotState = ROBOT_COAST;
-		}
-		break;
-	case ROBOT_COAST:
+		case ROBOT_IDLE:
+			int16_t currAcc = imu->getAccZ();
+			if(abs(currAcc)>6144){ //3g
+				impulseCheckLaunch++;
+			}
+			else{
+				impulseCheckLaunch = 0;
+			}
+			if(impulseCheckLaunch>50){ //.5 seconds
+				LaunchTime = timestamp;
+				robotState = ROBOT_LAUNCH;
+			}
+			break;
+		case ROBOT_LAUNCH:
+			if((imu->getAccZ()<200)){
+				impulseCheckBurnout++;
+			}
+			else{
+				impulseCheckBurnout = 0;
+			}
+			if(((timestamp-LaunchTime)>5000) && (imu->getAccZ()<0) && impulseCheckBurnout>33){ //third of a second
+				robotState = ROBOT_COAST;
+				CoastTime = timestamp;
+			}
+			else if((timestamp-LaunchTime)>8000){
+				robotState = ROBOT_COAST;
+				CoastTime = timestamp;
 
-		break;
+			}
+			break;
+		case ROBOT_COAST:
+			long int TimeSinceCoast = timestamp-CoastTime;
+			Serial.println((TimeSinceCoast/1000)%5 * 0.25);
+			controlAirbrakes((TimeSinceCoast/1000)%5 * 0.25);
+			float currPressure = baro->getPressure();
+			if(currPressure<LastPressure && (timestamp - CoastTime)>10000){
+				pressureCheck++;
+			}
+			else if(currPressure>LastPressure){
+				pressureCheck = 0;
+			}
+			if(pressureCheck>33){
+				robotState = ROBOT_APOGEE_REACHED;
+				controlAirbrakes(0);
+			}
+			if((timestamp - CoastTime)>20000){
+				controlAirbrakes(0);
+				robotState = ROBOT_APOGEE_REACHED;
+			}
+			LastPressure = currPressure;
+			break;
+		case ROBOT_APOGEE_REACHED:
+
+			break;
 	}
 }
 

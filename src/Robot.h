@@ -36,6 +36,7 @@ typedef enum {
 	ROBOT_IDLE,
 	ROBOT_LAUNCH,
 	ROBOT_COAST,
+	ROBOT_APOGEE_REACHED
 
 } RobotState;
 
